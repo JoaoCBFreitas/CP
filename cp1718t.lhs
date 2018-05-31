@@ -998,10 +998,10 @@ nexiste (a:b:bs)=if a==b then False else nexiste (b:bs)
 \subsection*{Problema 2}
 
 \begin{code}
-inQTree  = either (Cell) (Block)
-outQTree (Cell x a b) =undefined;outQTree (Block a b c d)=undefined 
+inQTree  =undefined --either (Cell) (Block) 
+outQTree (Cell x a b) =i1 (x,(a,b));outQTree (Block a b c d)=i2 (a,(b,(c,d)))
 baseQTree = undefined
-recQTree =undefined--id -|- g
+recQTree  =undefined --id -|- fmap (id -|- g)
 cataQTree g = g . recQTree (cataQTree g) . outQTree
 anaQTree = undefined
 hyloQTree = undefined
@@ -1016,7 +1016,9 @@ compressQTree = undefined
 outlineQTree = undefined
 
 myflip::QTree a ->QTree a
+myflip (Cell a b c)=Cell a b c
 myflip (Block x1 x2 x3 x4) = Block x3 x1 x4 x2
+
 \end{code}
 
 \subsection*{Problema 3}

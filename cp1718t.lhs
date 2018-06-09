@@ -978,8 +978,8 @@ inBlockchain = either Bc Bcs
 outBlockchain (Bc x)=i1 x;outBlockchain (Bcs y)=i2 y
 recBlockchain g = id -|- id >< g    
 cataBlockchain g =g . recBlockchain (cataBlockchain g) . outBlockchain      
-anaBlockchain = undefined
-hyloBlockchain = undefined 
+anaBlockchain h=inBlockchain .recBlockchain(anaBlockchain h) . h
+hyloBlockchain =undefined
 allTransactions = cataBlockchain (either (p2 . p2) (conc . (split (p2 . p2 . p1) p2)))
 
 
@@ -1000,26 +1000,29 @@ nexiste (a:b:bs)=if a==b then False else nexiste (b:bs)
 \begin{code}
 inQTree = either inCell inBlock 
 outQTree (Cell x a b) =i1 (x,(a,b));outQTree (Block a b c d)=i2 (a,(b,(c,d)))
-baseQTree = undefined
-recQTree  =undefined --id -|- fmap (id -|- g)
+baseQTree =undefined
+recQTree f= id -|- (f >< (f >< (f >< f)))
 cataQTree g = g . recQTree (cataQTree g) . outQTree
-anaQTree = undefined
+anaQTree h=inQTree . recQTree(anaQTree h) . h
 hyloQTree = undefined
 
 instance Functor QTree where
-    fmap f (Block a b c d) =Block (fmap f a) (fmap f b) (fmap f c) (fmap f d) 
+    fmap f (Block a b c d) =Block (fmap f a) (fmap f b) (fmap f c) (fmap f d)
 
-rotateQTree =undefined --cataQTree(either id myflip)
-scaleQTree = undefined
+rotateQTree =cataQTree (either inCell myflip) 
+scaleQTree a = cataQTree (either (escala a) inBlock)
 invertQTree = undefined
 compressQTree = undefined
 outlineQTree = undefined
 
 inBlock (a,(b,(c,d)))=Block a b c d
 inCell (a,(b,c))=Cell a b c
-myflip::QTree a ->QTree a
-myflip (Cell a b c)=Cell a b c
-myflip (Block x1 x2 x3 x4) = Block x3 x1 x4 x2
+
+myflip::(QTree a, (QTree a, (QTree a, QTree a)))->QTree a
+myflip (x1,(x2,(x3,x4))) = Block x3 x1 x4 x2
+
+escala::Int->(a,(Int,Int))->QTree a
+escala x (a,(b,c))= Cell a (x*b) (x*c)
 
 \end{code}
 

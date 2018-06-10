@@ -1009,7 +1009,7 @@ hyloQTree = undefined
 instance Functor QTree where
     fmap f (Block a b c d) =Block (fmap f a) (fmap f b) (fmap f c) (fmap f d)
 
-rotateQTree =cataQTree (either inCell myflip) 
+rotateQTree =cataQTree (either myflipc myflipb) 
 scaleQTree a = cataQTree (either (escala a) inBlock)
 invertQTree = undefined
 compressQTree = undefined
@@ -1018,9 +1018,14 @@ outlineQTree = undefined
 inBlock (a,(b,(c,d)))=Block a b c d
 inCell (a,(b,c))=Cell a b c
 
-myflip::(QTree a, (QTree a, (QTree a, QTree a)))->QTree a
-myflip (x1,(x2,(x3,x4))) = Block x3 x1 x4 x2
+--Flip nos blocks e nas celulas
+myflipb::(QTree a, (QTree a, (QTree a, QTree a)))->QTree a
+myflipb (x1,(x2,(x3,x4))) = Block x3 x1 x4 x2
 
+myflipc::(a,(Int,Int))->QTree a
+myflipc (a,(b,c))=Cell a c b
+
+--Faz a escala nas celulas
 escala::Int->(a,(Int,Int))->QTree a
 escala x (a,(b,c))= Cell a (x*b) (x*c)
 

@@ -979,7 +979,7 @@ outBlockchain (Bc x)=i1 x;outBlockchain (Bcs y)=i2 y
 recBlockchain g = id -|- id >< g    
 cataBlockchain g =g . recBlockchain (cataBlockchain g) . outBlockchain      
 anaBlockchain h=inBlockchain .recBlockchain(anaBlockchain h) . h
-hyloBlockchain =undefined
+hyloBlockchain h f=(cataBlockchain h).(anaBlockchain f)
 allTransactions = cataBlockchain (either (p2 . p2) (conc . (split (p2 . p2 . p1) p2)))
 
 
@@ -1000,18 +1000,19 @@ nexiste (a:b:bs)=if a==b then False else nexiste (b:bs)
 \begin{code}
 inQTree = either inCell inBlock 
 outQTree (Cell x a b) =i1 (x,(a,b));outQTree (Block a b c d)=i2 (a,(b,(c,d)))
-baseQTree =undefined
-recQTree f= id -|- (f >< (f >< (f >< f)))
+baseQTree f g=(f><id) -|- (g >< (g >< (g >< g))) 
+recQTree g = baseQTree id g 
 cataQTree g = g . recQTree (cataQTree g) . outQTree
 anaQTree h=inQTree . recQTree(anaQTree h) . h
-hyloQTree = undefined
+hyloQTree h f=(cataQTree h).(anaQTree f)
 
 instance Functor QTree where
-    fmap f (Block a b c d) =Block (fmap f a) (fmap f b) (fmap f c) (fmap f d)
+    fmap f = cataQTree (inQTree . baseQTree f id)
+
 
 rotateQTree =cataQTree (either myflipc myflipb) 
 scaleQTree a = cataQTree (either (escala a) inBlock)
-invertQTree = undefined
+invertQTree =cataQTree (either inverte inBlock)
 compressQTree = undefined
 outlineQTree = undefined
 
@@ -1028,6 +1029,10 @@ myflipc (a,(b,c))=Cell a c b
 --Faz a escala nas celulas
 escala::Int->(a,(Int,Int))->QTree a
 escala x (a,(b,c))= Cell a (x*b) (x*c)
+
+--Faz a inversao de uma celula
+inverte::(PixelRGBA8,(Int,Int))->QTree PixelRGBA8
+inverte ((PixelRGBA8 a b c d),(x,y))= Cell (PixelRGBA8 (255-a) (255-b) (255-c) d) x y
 
 \end{code}
 

@@ -1014,7 +1014,7 @@ rotateQTree =cataQTree (either myflipc myflipb)
 scaleQTree a = cataQTree (either (escala a) inBlock)
 invertQTree =cataQTree (either inverte inBlock)
 compressQTree a = undefined--cataQTree (either (trimc 0 a) (trimb 0 a))
-outlineQTree fundo =cataQTree(either (fromLists.singl.singl.fundo.p1) inFundo)
+outlineQTree fundo =cataQTree(either (gerafundo fundo) inFundo)
 
 inBlock (a,(b,(c,d)))=Block a b c d
 inCell (a,(b,c))=Cell a b c
@@ -1040,12 +1040,14 @@ inverte ((PixelRGBA8 a b c d),(x,y))= Cell (PixelRGBA8 (255-a) (255-b) (255-c) d
 --trimb a b (Block a b c d)
 
 --Funcao que da True quando a Celula é branca
-fundo::PixelRGBA8->Bool
-fundo (PixelRGBA8 a b c d)=if (a==255) && (b==255) && (c==255) then True else False
+fundo::(Eq a,Num a)=>a->Bool
+fundo a=if a==0 then True else False
+
+--Funcao que cria uma Matriz a partir de uma celula
+gerafundo::(a->Bool)->(a,(Int,Int))->Matrix Bool
+gerafundo f (a,(b,c)) =fromList c b (replicate (b*c) (f a)) 
 
 --Junta 4 matrizes
---a b
---c d
 inFundo::(Matrix Bool,(Matrix Bool, (Matrix Bool, Matrix Bool)))->Matrix Bool
 inFundo (a,(b,(c,d)))=((a<|>b)<->(c<|>d))
                         

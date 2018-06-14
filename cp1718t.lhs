@@ -1013,8 +1013,8 @@ instance Functor QTree where
 rotateQTree =cataQTree (either myflipc myflipb) 
 scaleQTree a = cataQTree (either (escala a) inBlock)
 invertQTree =cataQTree (either inverte inBlock)
-compressQTree = undefined
-outlineQTree = undefined
+compressQTree a = undefined--cataQTree (either (trimc 0 a) (trimb 0 a))
+outlineQTree fundo =cataQTree(either (fromLists.singl.singl.fundo.p1) inFundo)
 
 inBlock (a,(b,(c,d)))=Block a b c d
 inCell (a,(b,c))=Cell a b c
@@ -1034,6 +1034,21 @@ escala x (a,(b,c))= Cell a (x*b) (x*c)
 inverte::(PixelRGBA8,(Int,Int))->QTree PixelRGBA8
 inverte ((PixelRGBA8 a b c d),(x,y))= Cell (PixelRGBA8 (255-a) (255-b) (255-c) d) x y
 
+
+--Funcao que pega em Block(a b c d) e devolve so a
+--trimb::Int->Int->QTree a->QTree a
+--trimb a b (Block a b c d)
+
+--Funcao que da True quando a Celula é branca
+fundo::PixelRGBA8->Bool
+fundo (PixelRGBA8 a b c d)=if (a==255) && (b==255) && (c==255) then True else False
+
+--Junta 4 matrizes
+--a b
+--c d
+inFundo::(Matrix Bool,(Matrix Bool, (Matrix Bool, Matrix Bool)))->Matrix Bool
+inFundo (a,(b,(c,d)))=((a<|>b)<->(c<|>d))
+                        
 \end{code}
 
 \subsection*{Problema 3}
@@ -1050,9 +1065,10 @@ inFTree = undefined
 outFTree = undefined
 baseFTree = undefined
 recFTree = undefined
-cataFTree = undefined
-anaFTree = undefined
-hyloFTree = undefined
+cataFTree g = g . recFTree (cataFTree g).outFTree
+anaFTree h = inFTree . recFTree(anaFTree h).h
+hyloFTree h f = (cataFTree h).(anaFTree f)
+
 
 instance Bifunctor FTree where
     bimap = undefined

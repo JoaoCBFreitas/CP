@@ -1045,7 +1045,9 @@ fundo a=if a==0 then True else False
 
 --Funcao que cria uma Matriz a partir de uma celula
 gerafundo::(a->Bool)->(a,(Int,Int))->Matrix Bool
-gerafundo f (a,(b,c)) =fromList c b (replicate (b*c) (f a)) 
+gerafundo f (a,(b,c)) |f a==False || (c<=2 || b<=2) =fromList c b (replicate (b*c) (f a)) 
+                      |otherwise=fromList c b h
+                      where h=(replicate c True)++(concat (replicate (b-2) ([True]++(replicate (c-2) False)++[True])))++(replicate c True)
 
 --Junta 4 matrizes
 inFundo::(Matrix Bool,(Matrix Bool, (Matrix Bool, Matrix Bool)))->Matrix Bool

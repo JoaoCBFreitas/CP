@@ -986,6 +986,8 @@ allTransactions = cataBlockchain (either (p2 . p2) (conc . (split (p2 . p2 . p1)
 ledger = map (split p1 (p1.p2)).allTransactions 
 isValidMagicNr =nexiste.sort.cataBlockchain (either (singl . p1) (conc . (split (singl .p1 . p1) p2)))
 
+
+-------------------------------------Funções Auxiliares da isValidMagicNr--------------------------------------------
 nexiste::[String]->Bool
 nexiste []=True 
 nexiste [a]=True
@@ -1013,12 +1015,13 @@ instance Functor QTree where
 rotateQTree =cataQTree (either myflipc myflipb) 
 scaleQTree a = cataQTree (either (escala a) inBlock)
 invertQTree =cataQTree (either inverte inBlock)
-compressQTree a = undefined--cataQTree (either (trimc 0 a) (trimb 0 a))
+compressQTree a = undefined--cataQTree (either inCell (inter 1 a))
 outlineQTree fundo =cataQTree(either (gerafundo fundo) inFundo)
 
 inBlock (a,(b,(c,d)))=Block a b c d
 inCell (a,(b,c))=Cell a b c
 
+-------------------------------------Funções Auxiliares da rotateQTree--------------------------------------------
 --Flip nos blocks e nas celulas
 myflipb::(QTree a, (QTree a, (QTree a, QTree a)))->QTree a
 myflipb (x1,(x2,(x3,x4))) = Block x3 x1 x4 x2
@@ -1026,19 +1029,33 @@ myflipb (x1,(x2,(x3,x4))) = Block x3 x1 x4 x2
 myflipc::(a,(Int,Int))->QTree a
 myflipc (a,(b,c))=Cell a c b
 
+-------------------------------------Funções Auxiliares da scaleQTree--------------------------------------------
 --Faz a escala nas celulas
 escala::Int->(a,(Int,Int))->QTree a
 escala x (a,(b,c))= Cell a (x*b) (x*c)
 
+-------------------------------------Funções Auxiliares da invertQTree-------------------------------------------
 --Faz a inversao de uma celula
 inverte::(PixelRGBA8,(Int,Int))->QTree PixelRGBA8
 inverte ((PixelRGBA8 a b c d),(x,y))= Cell (PixelRGBA8 (255-a) (255-b) (255-c) d) x y
 
+-------------------------------------Funções Auxiliares da compressQTree-----------------------------------------
+--Funçao que determina a profundidade de uma QTree
+depth::QTree a->Int 
+depth (Cell a b c)=0
+depth (Block a b c d)=1 + maximum(([depth a]++[depth b]++[depth c]++[depth d]))
 
---Funcao que pega em Block(a b c d) e devolve so a
---trimb::Int->Int->QTree a->QTree a
---trimb a b (Block a b c d)
+--Funcao que efetua o corte
+trimQTree::Int->Int->QTree a->QTree a
+trimQTree a b (Block x y z w) |a<b =inBlock((trimQTree (a+1) b x),(((trimQTree (a+1) b y),((trimQTree (a+1) b z),(trimQTree (a+1) b w)))))
+                              |otherwise=x
 
+--Funçao intermedia para nao haver perda de informação
+inter::Int->Int->QTree a->QTree a
+inter a b c= trimQTree a ((depth c-b)) c
+
+
+-------------------------------------Funções Auxiliares da outlineQTree------------------------------------------
 --Funcao que da True quando a Celula é branca
 fundo::(Eq a,Num a)=>a->Bool
 fundo a=if a==0 then True else False
@@ -1075,7 +1092,8 @@ hyloFTree h f = (cataFTree h).(anaFTree f)
 
 
 instance Bifunctor FTree where
-    bimap = undefined
+    --aplica á primeira parte o f e a segunda o y
+    bimap f y =undefined
 
 generatePTree = undefined
 drawPTree = undefined

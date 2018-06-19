@@ -1015,8 +1015,8 @@ instance Functor QTree where
 rotateQTree =cataQTree (either myflipc myflipb) 
 scaleQTree a = cataQTree (either (escala a) inBlock)
 invertQTree =cataQTree (either inverte inBlock)
-compressQTree a = undefined--cataQTree (either inCell (inter 1 a))
-outlineQTree fundo =cataQTree(either (gerafundo fundo) inFundo)
+compressQTree a =inter 1 a --cataQTree (either inCell ((inter 1 a).inBlock))
+outlineQTree f =cataQTree(either (gerafundo f) inFundo)
 
 inBlock (a,(b,(c,d)))=Block a b c d
 inCell (a,(b,c))=Cell a b c
@@ -1047,12 +1047,13 @@ depth (Block a b c d)=1 + maximum(([depth a]++[depth b]++[depth c]++[depth d]))
 
 --Funcao que efetua o corte
 trimQTree::Int->Int->QTree a->QTree a
-trimQTree a b (Block x y z w) |a<b =inBlock((trimQTree (a+1) b x),(((trimQTree (a+1) b y),((trimQTree (a+1) b z),(trimQTree (a+1) b w)))))
+trimQTree a b (Cell x y z)=Cell x y z --tem de sair deve ser equivalente ao inCell do either
+trimQTree a b (Block x y z w) |a<=b =inBlock((trimQTree (succ a) b x),(((trimQTree (succ a) b y),((trimQTree (succ a) b z),(trimQTree (succ a) b w)))))
                               |otherwise=x
 
 --Funçao intermedia para nao haver perda de informação
 inter::Int->Int->QTree a->QTree a
-inter a b c= trimQTree a ((depth c-b)) c
+inter a b c= trimQTree a ((depth c)-b) c
 
 
 -------------------------------------Funções Auxiliares da outlineQTree------------------------------------------

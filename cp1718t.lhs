@@ -660,7 +660,7 @@ g 0 = 1
 g (d+1) = underbrace ((d+1)) (s d) * g d
 
 s 0 = 1
-s (d+1) = s n + 1
+s (d+1) = s d + 1
 \end{spec}
 A partir daqui alguém derivou a seguinte implementação:
 \begin{code}
@@ -673,7 +673,7 @@ derive as funções |base k| e |loop| que são usadas como auxiliares acima.
 \begin{propriedade}
 Verificação que |bin n k| coincide com a sua especificação (\ref{eq:bin}):
 \begin{code}
-prop3 n k = (bin n k) == (fac n) % (fac k * (fac ((n-k))))
+prop3 (NonNegative n) (NonNegative k) = k <= n ==> (bin n k) == (fac n) % (fac k * (fac ((n-k))))
 \end{code}
 \end{propriedade}
 
@@ -980,14 +980,14 @@ recBlockchain g = id -|- id >< g
 cataBlockchain g =g . recBlockchain (cataBlockchain g) . outBlockchain      
 anaBlockchain h=inBlockchain .recBlockchain(anaBlockchain h) . h
 hyloBlockchain h f=(cataBlockchain h).(anaBlockchain f)
+
+
 allTransactions = cataBlockchain (either (p2 . p2) (conc . (split (p2 . p2 . p1) p2)))
-
-
 ledger = map (split p1 (p1.p2)).allTransactions 
 isValidMagicNr =nexiste.sort.cataBlockchain (either (singl . p1) (conc . (split (singl .p1 . p1) p2)))
 
 
--------------------------------------Funções Auxiliares da isValidMagicNr--------------------------------------------
+-------------------------------------Função Auxiliar da isValidMagicNr--------------------------------------------
 nexiste::[String]->Bool
 nexiste []=True 
 nexiste [a]=True
@@ -1015,7 +1015,7 @@ instance Functor QTree where
 rotateQTree =cataQTree (either myflipc myflipb) 
 scaleQTree a = cataQTree (either (escala a) inBlock)
 invertQTree =cataQTree (either inverte inBlock)
-compressQTree a =inter 1 a --cataQTree (either inCell ((inter 1 a).inBlock))
+compressQTree a =inter a
 outlineQTree f =cataQTree(either (gerafundo f) inFundo)
 
 inBlock (a,(b,(c,d)))=Block a b c d
@@ -1029,45 +1029,44 @@ myflipb (x1,(x2,(x3,x4))) = Block x3 x1 x4 x2
 myflipc::(a,(Int,Int))->QTree a
 myflipc (a,(b,c))=Cell a c b
 
--------------------------------------Funções Auxiliares da scaleQTree--------------------------------------------
+-------------------------------------Função Auxiliar da scaleQTree-----------------------------------------------
 --Faz a escala nas celulas
 escala::Int->(a,(Int,Int))->QTree a
 escala x (a,(b,c))= Cell a (x*b) (x*c)
 
--------------------------------------Funções Auxiliares da invertQTree-------------------------------------------
---Faz a inversao de uma celula
+-------------------------------------Função Auxiliar da invertQTree----------------------------------------------
+--Faz a inversão de uma celula
 inverte::(PixelRGBA8,(Int,Int))->QTree PixelRGBA8
 inverte ((PixelRGBA8 a b c d),(x,y))= Cell (PixelRGBA8 (255-a) (255-b) (255-c) d) x y
 
 -------------------------------------Funções Auxiliares da compressQTree-----------------------------------------
---Funçao que determina a profundidade de uma QTree
+--Função que determina a profundidade de uma QTree
 depth::QTree a->Int 
 depth (Cell a b c)=0
 depth (Block a b c d)=1 + maximum(([depth a]++[depth b]++[depth c]++[depth d]))
 
---Funcao que efetua o corte
+--Função que faz o corte
 trimQTree::Int->Int->QTree a->QTree a
-trimQTree a b (Cell x y z)=Cell x y z --tem de sair deve ser equivalente ao inCell do either
+trimQTree a b (Cell x y z)=Cell x y z
 trimQTree a b (Block x y z w) |a<=b =inBlock((trimQTree (succ a) b x),(((trimQTree (succ a) b y),((trimQTree (succ a) b z),(trimQTree (succ a) b w)))))
                               |otherwise=x
 
---Funçao intermedia para nao haver perda de informação
-inter::Int->Int->QTree a->QTree a
-inter a b c= trimQTree a ((depth c)-b) c
+--Função intermédia para não haver perda de informação
+inter::Int->QTree a->QTree a
+inter b c= trimQTree 1 ((depth c)-b) c
 
-
--------------------------------------Funções Auxiliares da outlineQTree------------------------------------------
---Funcao que da True quando a Celula é branca
+-------------------------------------Funções Auxiliares da outlineQTree-----------------------------------------
+--Função que da True quando a Celula é branca
 fundo::(Eq a,Num a)=>a->Bool
 fundo a=if a==0 then True else False
 
---Funcao que cria uma Matriz a partir de uma celula
+--Função que cria uma Matriz a partir de uma celula
 gerafundo::(a->Bool)->(a,(Int,Int))->Matrix Bool
 gerafundo f (a,(b,c)) |f a==False || (c<=2 || b<=2) =fromList c b (replicate (b*c) (f a)) 
                       |otherwise=fromList c b h
                       where h=(replicate c True)++(concat (replicate (b-2) ([True]++(replicate (c-2) False)++[True])))++(replicate c True)
 
---Junta 4 matrizes
+--Função que junta 4 matrizes numa só
 inFundo::(Matrix Bool,(Matrix Bool, (Matrix Bool, Matrix Bool)))->Matrix Bool
 inFundo (a,(b,(c,d)))=((a<|>b)<->(c<|>d))
                         
@@ -1076,34 +1075,44 @@ inFundo (a,(b,(c,d)))=((a<|>b)<->(c<|>d))
 \subsection*{Problema 3}
 
 \begin{code}
-base = undefined
-loop = undefined
+base =criaQuad.split (split (const 1) succ) (split (const 1) (const 1))
+ 
+loop =criaQuad . (split (split (mul . p1) (succ . p2 . p1)) (split (mul . p2) (succ . p2 . p2))) . criaTupTup
+-------------------------------------Funções Auxiliares-------------------------------------------------------
+criaQuad::((Integer,Integer),(Integer,Integer))->(Integer,Integer,Integer,Integer)
+criaQuad ((a,b),(c,d))=(a,b,c,d)
+
+criaTupTup::(Integer,Integer,Integer,Integer)->((Integer,Integer),(Integer,Integer))
+criaTupTup (a,b,c,d)=((a,b),(c,d))
 \end{code}
 
 \subsection*{Problema 4}
 
 \begin{code}
-inFTree = undefined
-outFTree = undefined
-baseFTree = undefined
-recFTree = undefined
+inFTree = either inUnit inComp
+outFTree (Unit b)=i1 b;outFTree (Comp a c d)=i2 (a,(c,d))
+baseFTree f g h = g -|- (f><(h><h))
+recFTree f = baseFTree id id f
 cataFTree g = g . recFTree (cataFTree g).outFTree
 anaFTree h = inFTree . recFTree(anaFTree h).h
 hyloFTree h f = (cataFTree h).(anaFTree f)
 
 
 instance Bifunctor FTree where
-    --aplica á primeira parte o f e a segunda o y
-    bimap f y =undefined
+    bimap f y =cataFTree (inFTree.baseFTree f y id)
 
-generatePTree = undefined
+generatePTree a= undefined 
 drawPTree = undefined
+
+inUnit a=Unit a
+inComp (a,(b,c))=Comp a b c
+
 \end{code}
 
 \subsection*{Problema 5}
 
 \begin{code}
-singletonbag = undefined
+singletonbag = B . singl . (split id (const 1))
 muB = undefined
 dist = undefined
 \end{code}

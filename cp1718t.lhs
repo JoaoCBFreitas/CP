@@ -972,7 +972,7 @@ alterados os nomes ou tipos das funções dadas, mas pode ser adicionado texto e
 outras funções auxiliares que sejam necessárias.
 
 \subsection*{Problema 1}
-
+Combinadores para o BlockChain
 \begin{code}
 inBlockchain = either Bc Bcs
 outBlockchain (Bc x)=i1 x;outBlockchain (Bcs y)=i2 y
@@ -980,25 +980,67 @@ recBlockchain g = id -|- id >< g
 cataBlockchain g =g . recBlockchain (cataBlockchain g) . outBlockchain      
 anaBlockchain h=inBlockchain .recBlockchain(anaBlockchain h) . h
 hyloBlockchain h f=(cataBlockchain h).(anaBlockchain f)
+\end{code}
 
+Para obter todas as transações era necessário remover o terceiro elemento de um Block, fazendo isso recursivamente através do cataBlockChain.
+Criando então uma lista contendo todas as transações efetuadas.
 
+\begin{eqnarray*}
+\xymatrix@@C=2cm{
+    |Blockchain|
+           \ar[d]_-{allTransactions = |cataBlockchain g|}
+&
+    |Block + Block >< Blockchain|
+           \ar[d]^{|id + id >< (cataBlockchain g)|}
+           \ar[l]_-{|inBlockchain|}
+\\
+     |Transactions|
+&
+     |Block + Block >< Transactions|
+           \ar[l]^-{|g|}
+}
+\end{eqnarray*}
+
+\begin{code}
 allTransactions = cataBlockchain (either (p2 . p2) (conc . (split (p2 . p2 . p1) p2)))
-ledger = map (split p1 (p1.p2)).allTransactions 
+\end{code}
+
+Com as Transações obtidas através do allTransactions, obter o ledger é uma questão de retirar todos as entidades e valores,
+criando uma lista de tuplos (entity,Value).Por fim faz-se sort para ordenar alfabeticamente a lista e corre-se a função
+auxledger que junta todos os tuplos pertencentes a uma só entidade num só tuplo somando todos os Values dessa entidade.
+
+\begin{code}
+ledger = auxledger.sort. map (split p1 (p1.p2)).allTransactions
+\end{code}
+
+Para verificar se não há MagicNo repetidos era necessário retirar todos os MagicNo de uma BlockChain, criando 
+então uma lista de MagicNo, que é ordenada alfabeticamente, por fim corre-se a função auxiliar nexiste que 
+verifica se 2 elementos consecutivos de uma lista são iguais ou não.
+
+\begin{code}
 isValidMagicNr =nexiste.sort.cataBlockchain (either (singl . p1) (conc . (split (singl .p1 . p1) p2)))
+\end{code}
 
+Função auxiliar usada em ledger.
+\begin{code}
+auxledger::(Eq a,Num b,Num entity)=>[(a,b)]->[(a,b)]
+auxledger []=[]
+auxledger [(a,b)]=[(a,b)]
+auxledger (h:t) =if fst h==fst (head t) then auxledger ((fst h,(snd h)+(snd(head t))):(tail t)) else h:(auxledger t)
+\end{code}
 
--------------------------------------Função Auxiliar da isValidMagicNr--------------------------------------------
+Função auxiliar usada em isValidMagicNr.
+\begin{code}
 nexiste::[String]->Bool
 nexiste []=True 
 nexiste [a]=True
 nexiste (a:b:bs)=if a==b then False else nexiste (b:bs)
-
 \end{code}
 
 
 
 \subsection*{Problema 2}
-
+Construtores para QTree
 \begin{code}
 inQTree = either inCell inBlock 
 outQTree (Cell x a b) =i1 (x,(a,b));outQTree (Block a b c d)=i2 (a,(b,(c,d)))
@@ -1010,17 +1052,69 @@ hyloQTree h f=(cataQTree h).(anaQTree f)
 
 instance Functor QTree where
     fmap f = cataQTree (inQTree . baseQTree f id)
+\end{code}
 
+Função que roda uma QTree 90 graus.Faz isso através dum catamorfismo e duas funções auxiliares,
+uma que efetua a rotação numa célula, (Cell a b c) passa a (Cell a c b), e uma que gera um
+bloco rodado, (Block a b c d)=(Block c a d b).
 
-rotateQTree =cataQTree (either myflipc myflipb) 
+\begin{eqnarray*}
+\xymatrix@@C=2cm{
+    |A >< (B >< C)|
+        \ar[r]_-{|myflipc|}
+&
+    |Cell A C B|
+}
+\end{eqnarray*}
+
+\begin{eqnarray*}
+\xymatrix@@C=2cm{
+    |A >< (B >< (C >< D))|
+        \ar[r]_-{|myflipb|}
+&
+    |Block C A D B|
+}
+\end{eqnarray*}
+
+\begin{code}
+rotateQTree =cataQTree (either myflipc myflipb)
+\end{code}
+
+Para fazer scale a uma QTree era necessário aumentar o tamanho de uma célula usando o valor dado como input.
+Para fazer isso só foi preciso multiplicar as dimensões de uma célula pelo inteiro fornecido.
+scaleQTree v (Cell a b c)=Cell a (b*v) (c*v).
+\begin{code} 
 scaleQTree a = cataQTree (either (escala a) inBlock)
-invertQTree =cataQTree (either inverte inBlock)
-compressQTree a =inter a
-outlineQTree f =cataQTree(either (gerafundo f) inFundo)
+\end{code}
 
+Semelhante ao scale, para a resolução desta alínea só era necessário pegar numa (Cell (PixelRGBA8) a b) e
+alterar os valores correspondentes á cor, 255-valor correspondente.
+\begin{code}
+invertQTree =cataQTree (either inverte inBlock)
+\end{code}
+
+Para a resolução compressQTree era necessário o nivel de compressão e a profundidade da QTree ,sendo que
+a (depth-nivelCompressão) iria dar os niveis onde era suposto cortar.Depois percorria-se recursivamente 
+a QTree até chegar ao nivel de corte. O corte era feito de forma a que só o primeiro elemento de um bloco
+"sobrevivesse",(Block a b c d)=a.Se fosse uma célula então não faz nada.
+
+\begin{code}
+compressQTree a =compressaux a
+\end{code}
+
+No outlineQTree era necessário uma função que recebesse informação de uma célula e entregasse uma matriz
+Bool do tamanho da célula e uma função que juntasse todas as matrizes numa só.
+\begin{code}
+outlineQTree f =cataQTree(either (gerafundo f) inFundo)
+\end{code}
+
+Construtores auxiliares inQTree
+\begin{code}
 inBlock (a,(b,(c,d)))=Block a b c d
 inCell (a,(b,c))=Cell a b c
+\end{code}
 
+\begin{code}
 -------------------------------------Funções Auxiliares da rotateQTree--------------------------------------------
 --Flip nos blocks e nas celulas
 myflipb::(QTree a, (QTree a, (QTree a, QTree a)))->QTree a
@@ -1051,9 +1145,9 @@ trimQTree a b (Cell x y z)=Cell x y z
 trimQTree a b (Block x y z w) |a<=b =inBlock((trimQTree (succ a) b x),(((trimQTree (succ a) b y),((trimQTree (succ a) b z),(trimQTree (succ a) b w)))))
                               |otherwise=x
 
---Função intermédia para não haver perda de informação
-inter::Int->QTree a->QTree a
-inter b c= trimQTree 1 ((depth c)-b) c
+
+compressaux::Int->QTree a->QTree a
+compressaux b c= trimQTree 1 ((depth c)-b) c
 
 -------------------------------------Funções Auxiliares da outlineQTree-----------------------------------------
 --Função que da True quando a Celula é branca
@@ -1064,21 +1158,189 @@ fundo a=if a==0 then True else False
 gerafundo::(a->Bool)->(a,(Int,Int))->Matrix Bool
 gerafundo f (a,(b,c)) |f a==False || (c<=2 || b<=2) =fromList c b (replicate (b*c) (f a)) 
                       |otherwise=fromList c b h
-                      where h=(replicate c True)++(concat (replicate (b-2) ([True]++(replicate (c-2) False)++[True])))++(replicate c True)
+        where h=(replicate c True)++(concat (replicate (b-2) ([True]++(replicate (c-2) False)++[True])))++(replicate c True)
 
 --Função que junta 4 matrizes numa só
 inFundo::(Matrix Bool,(Matrix Bool, (Matrix Bool, Matrix Bool)))->Matrix Bool
-inFundo (a,(b,(c,d)))=((a<|>b)<->(c<|>d))
-                        
+inFundo (a,(b,(c,d)))=((a<|>b)<->(c<|>d))                       
 \end{code}
 
 \subsection*{Problema 3}
 
+f k
+\begin{eqnarray*}
+\start
+        |lcbr(
+    f k 0 = 1
+  )(
+    f k (d + 1) = (d + k  + 1) * f k d
+  )|
+\just\equiv{ (d + k  + 1) = l k d;(73);(74);(76);(78)}
+        |lcbr(
+    f k . (const 0) = (const 1)
+  )(
+    f k . succ = mul (split (f k) (l k))
+  )|
+\just\equiv{ (27) }
+|either (f k . (const 0)) (f k . succ) = either (const 1) (mul (split (f k) (l k)))|
+\just\equiv{ (20); in = |either (const 0) (succ)| ; (22)}
+|f k . in = (either (const 1) (mul)) . (id + (split (f k) (l k)))|
+\just\equiv{ f f = (id + f)}
+|f k . in = (either (const 1) (mul)) . f (split (f k) (l k))|
+\end{eqnarray*}
+
+l k
+\begin{eqnarray*}
+\start
+        |lcbr(
+    l k 0 = k + 1
+  )(
+    l k (d + 1) = l k d + 1
+  )|
+%
+\just\equiv{ (73);(74);(76)}
+%
+        |lcbr(
+    l k . (const 0) = succ . k
+  )(
+    l k . succ = succ . (l k)
+  )|
+\just\equiv{ (27);(7) }
+%
+|either (l k . (const 0)) (l k . succ) = either (succ . k) (succ . p2 . (split (f k) (l k)))|
+\just\equiv{ (9); in = |either (const 0) (succ)| ; (22)}
+%
+|l k . in = (either (succ . k) (succ . p2)) . (id + (split (f k) (l k)))|
+\just\equiv{ f f = (id + f)}
+|l k . in = (either (succ . k) (succ . p2)) . f (split (f k) (l k))|
+\end{eqnarray*}
+
+Lei recursividade múltipla para |split (f k) (l k)|
+\begin{eqnarray*}
+\start
+        |lcbr(
+    f k . in = (either (const 1) (mul)) . f (split (f k) (l k))
+  )(
+    l k . in = (either (succ . k) (succ . p2)) . f (split (f k) (l k))
+  )|
+%
+\just\equiv{ fokkinga }
+%
+|split (f k) (l k) = cata (split (either (const 1) (mul)) (either (succ . k) (succ . p2)))|
+\end{eqnarray*}
+
+g
+\begin{eqnarray*}
+\start
+        |lcbr(
+    g 0 = 1
+  )(
+    g (d + 1) = (d + 1) * g d
+  )|
+%
+\just\equiv{ (73);(74);(78); (d + 1) = s d}
+%
+        |lcbr(
+    g . (const 0) = (const 1)
+  )(
+    g . succ = mul (split g s)
+  )|
+\just\equiv{ (27)}
+%
+|either (g . (const 0)) (g . succ) = either (const 1) (mul (split g s))|
+\just\equiv{ (20);  in = |either (const 0) (succ)| ; (22)}
+%
+|g . in = (either (const 1) (mul)) . (id + (split g s)|
+\just\equiv{ f f = (id + f)}
+%
+|g . in = (either (const 1) (mul)) . f (split g s)|
+\end{eqnarray*}
+
+s
+\begin{eqnarray*}
+\start
+        |lcbr(
+    s 0 = 1
+  )(
+    s (d + 1) = s d + 1
+  )|
+%
+\just\equiv{ (73);(74)}
+%
+        |lcbr(
+    s . (const 0) = (const 1)
+  )(
+    s . succ = succ .s
+  )|
+\just\equiv{ (27);(7) }
+%
+|either (s . (const 0)) (s . succ) = either (const 1) (succ . p2 . (split g s))|
+\just\equiv{ (20); in = |either (const 0) (succ)| ; (22)}
+%
+|s . in = (either (const 1) (succ . p2)) . (id + (split g s))|
+\just\equiv{ f f = (id + f)}
+%
+|s . in = (either (const 1) (succ . p2)) . f (split g s)|
+\end{eqnarray*}
+
+Lei recursividade múltipla para |split g s|
+\begin{eqnarray*}
+\start
+        |lcbr(
+    g . in = (either (const 1) (mul)) . f (split g s)
+  )(
+    s . in = (either (const 1) (succ . p2)) . f (split g s)))
+  )|
+%
+\just\equiv{ fokkinga }
+%
+|split g s = cata (split (either (const 1) (mul)) (either (const 1) (succ . p2))|
+\end{eqnarray*}
+
+Combinar resultados.
+\begin{eqnarray*}
+\start
+|split (cata((either (const 1) (mul)),(either (succ . k) (succ . p2)))) (cata((either (const 1) (mul)),(either (const 1) (succ . p2))))|
+%
+\just\equiv{ "banana-split" }
+%
+|cata (((either (const 1) (mul)),(either (succ . k) (succ . p2)))><((either (const 1) (mul)),(either (const 1) (succ . p2)))) . split (f p1)(f p2)|
+%
+\just\equiv{ ff = (id + f); (11)}
+%
+|cata (split (((either (const 1) (mul)),(either (succ . k) (succ . p2))).(id+p1)) (((either (const 1) (mul)),(either (const 1) (succ . p2))).(id+p2)))|
+%
+\just\equiv{ (9) }
+%
+|cata (split (((either (const 1) (mul)).(id+p1),(either (succ . k) (succ . p2))).(id+p1)) (((either (const 1) (mul)).(id+p2),(either (const 1) (succ . p2))).(id+p2)))|
+%
+\just\equiv{ (22); (1) }
+%
+|cata (split (((either (const 1) (mul.p1)),(either (succ.k) (succ.p2.p1)))) (((either (const 1) (mul.p2)),(either (const 1) (succ.p2.p2))))|
+\end{eqnarray*}
+
+Deduzir loop e base 
+\begin{eqnarray*}
+\start
+|for loop base = cata (split (split (either (const 1) (mul.p1)) (either (succ) (succ.p2.p1))) (split (either (const 1) (mul.p2)) (either (const 1) (succ.p2.p2))))|
+%
+\just\equiv{ for b i = |cata (either (const i) (b))|; (28) }
+%
+|cata (either base loop) = cata (either (split (split (const 1) (succ)) (split (const 1) (const 1))) (split (split (mul.p1) (succ.p2.p1)) (split (mul.p2) (succ.p2.p2))))|
+%
+\just\equiv{ |cata f| = |cata g| |==| f = g ; (27) }
+%
+        |lcbr(
+    base = split (split (const 1) (+1)) (split (const 1) (const 1))
+  )(
+    loop = split (split (mul.p1) (succ.p2.p1)) (split (mul.p2) (succ.p2.p2))
+  )|
+\end{eqnarray*}
+
 \begin{code}
 base =criaQuad.split (split (const 1) succ) (split (const 1) (const 1))
- 
 loop =criaQuad . (split (split (mul . p1) (succ . p2 . p1)) (split (mul . p2) (succ . p2 . p2))) . criaTupTup
--------------------------------------Funções Auxiliares-------------------------------------------------------
+-------------------------------------Funções Auxiliares----------------------------
 criaQuad::((Integer,Integer),(Integer,Integer))->(Integer,Integer,Integer,Integer)
 criaQuad ((a,b),(c,d))=(a,b,c,d)
 
@@ -1086,8 +1348,11 @@ criaTupTup::(Integer,Integer,Integer,Integer)->((Integer,Integer),(Integer,Integ
 criaTupTup (a,b,c,d)=((a,b),(c,d))
 \end{code}
 
-\subsection*{Problema 4}
 
+
+
+\subsection*{Problema 4}
+Construtores FTree
 \begin{code}
 inFTree = either inUnit inComp
 outFTree (Unit b)=i1 b;outFTree (Comp a c d)=i2 (a,(c,d))
@@ -1111,8 +1376,14 @@ inComp (a,(b,c))=Comp a b c
 
 \subsection*{Problema 5}
 
+A \textit{singletonbag} começa por aplicar  \textit{|(split id (const 1))|} á cor do berlinde.
+Desta forma, obtém um tuplo (cor,const 1). De seguida aplicamos a função singl, que transforma 
+o tuplo numa lista de tuplos. Por fim, o construtor \textit{B} constrói uma \textit{Bag}.
 \begin{code}
 singletonbag = B . singl . (split id (const 1))
+\end{code}
+
+\begin{code}
 muB = undefined
 dist = undefined
 \end{code}
